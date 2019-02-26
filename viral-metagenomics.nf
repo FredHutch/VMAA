@@ -34,15 +34,17 @@ process fetch_from_synapse {
 
 process make_kraken_db {
 
-  container "quay.io/fhcrc-microbiome/kraken2@sha256:9615c77e63c90800895845e1cf6801cc19f6f55f29e09338de587aa8a1326e07"
   cpus 32
   memory "240 GB"
+  container "quay.io/fhcrc-microbiome/kraken2@sha256:e71b312bd428174b93377a8aaaec72a77524aba8b138cf569b929c44affee0c9"
+  cpus 16
+  memory "120 GB"
 
   output:
   file "KRAKEN_DB.tar"
 
   """
-  kraken2-build --standard --threads 32 --db KRAKEN_DB && \
+  kraken2-build --standard --threads 16 --db KRAKEN_DB && \
   tar cvf KRAKEN_DB.tar KRAKENDB/
   """
 
