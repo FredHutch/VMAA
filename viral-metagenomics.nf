@@ -3,8 +3,9 @@
 sample_sheet_ch = Channel.from(file(params.sample_sheet).readLines())
 synapse_username = params.synapse_username
 synapse_password = params.synapse_password
+params.fve_db_list_synapse = "syn18378769"
 
-process fetch_from_synapse {
+process fetch_sample_fastq {
 
   container "quay.io/biocontainers/synapseclient@sha256:fc96a0c4cf72ff143419314e8b23cea1d266d495c55f45b1901fa0cc77e67153"
   cpus 1
@@ -32,20 +33,70 @@ process fetch_from_synapse {
   """  
 }
 
-process make_kraken_db {
+process fetch_db_idx {
 
-  cpus 32
-  memory "240 GB"
-  container "quay.io/fhcrc-microbiome/kraken2@sha256:e71b312bd428174b93377a8aaaec72a77524aba8b138cf569b929c44affee0c9"
-  cpus 16
-  memory "120 GB"
+  container "quay.io/biocontainers/synapseclient@sha256:fc96a0c4cf72ff143419314e8b23cea1d266d495c55f45b1901fa0cc77e67153"
+  cpus 1
+  memory "2 GB"
+
+  input:
+  val synapse_uuid from params.fve_db_idx_synapse
 
   output:
-  file "KRAKEN_DB.tar"
+  file "kallisto_db.idx" into fve_db_idx
 
   """
-  kraken2-build --standard --threads 16 --db KRAKEN_DB && \
-  tar cvf KRAKEN_DB.tar KRAKENDB/
-  """
+  set -e;
 
+  filename=\$(synapse -u ${synapse_username} -p ${synapse_password} get ${synapse_uuid} | grep Downloaded | sed 's/Downloaded file: //')
+  echo "Downloaded \$filename"
+  mv \$filename kallisto_db.idx
+  """  
 }
+
+process fetch_db_list {
+
+  container "quay.io/biocontainers/synapseclient@sha256:fc96a0c4cf72ff143419314e8b23cea1d266d495c55f45b1901fa0cc77e67153"
+  cpus 1
+  memory "2 GB"
+
+  input:
+  val synapse_uuid from params.fve_db_list_synapse
+
+  output:
+  file "kallisto_db.list" into fve_db_list
+
+  """
+  set -e;
+
+  filename=\$(synapse -u ${synapse_username} -p ${synapse_password} get ${synapse_uuid} | grep Downloaded | sed 's/Downloaded file: //')
+  echo "Downloaded \$filename"
+  mv \$filename kallisto_db.list
+  """  
+}
+
+// process fast_virome_explorer {
+
+//   // container "quay.io/fhcrc-microbiome/fastviromeexplorer@sha256:555103371bc4b21be7fba64732e431f5bfc5ba2cf9305397ea8b4a5bb9a45f32"
+//   cpus 4
+//   memory "16 GB"
+
+//   input:
+//   each file(sample_fastq) from sample_fastq_ch
+//   file fve_db_ix
+//   file fve_db_list
+
+//   output:
+//   "${sample_fastq}.fve.tsv"
+
+//   """
+//     java \
+//     -cp /usr/local/FastViromeExplorer/bin \
+//     FastViromeExplorer \
+//     -l ${fve_db_list} \
+//     -1 ${sample_fastq} \
+//     -i ${fve_db} \
+//     -o ./ && \
+//     mv FastViromeExplorer-final-sorted-abundance.tsv ${sample_fastq}.fve.tsv
+//   """
+// }
