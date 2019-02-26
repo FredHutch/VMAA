@@ -14,7 +14,7 @@ process fetch_from_synapse {
   val synapse_uuid from sample_sheet_ch
 
   output:
-  file "${synapse_uuid}.fastq.gz"
+  file "${synapse_uuid}.fastq.gz" into sample_fastq_ch
 
   """
   set -e;
