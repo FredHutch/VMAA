@@ -3,6 +3,7 @@
 sample_sheet_ch = Channel.from(file(params.sample_sheet).readLines())
 synapse_username = params.synapse_username
 synapse_password = params.synapse_password
+params.fve_db_idx_synapse = "syn18378932"
 params.fve_db_list_synapse = "syn18378769"
 
 process fetch_sample_fastq {
@@ -10,12 +11,13 @@ process fetch_sample_fastq {
   container "quay.io/biocontainers/synapseclient@sha256:fc96a0c4cf72ff143419314e8b23cea1d266d495c55f45b1901fa0cc77e67153"
   cpus 1
   memory "2 GB"
+  scratch "/scratch"
 
   input:
   val synapse_uuid from sample_sheet_ch
 
   output:
-  file "${synapse_uuid}.fastq.gz" into sample_fastq_ch
+  file "${synapse_uuid}.fastq.gz" into sample_fastq_fve, sample_fastq_kraken
 
   """
   set -e;
@@ -38,6 +40,7 @@ process fetch_db_idx {
   container "quay.io/biocontainers/synapseclient@sha256:fc96a0c4cf72ff143419314e8b23cea1d266d495c55f45b1901fa0cc77e67153"
   cpus 1
   memory "2 GB"
+  scratch "/scratch"
 
   input:
   val synapse_uuid from params.fve_db_idx_synapse
@@ -59,6 +62,7 @@ process fetch_db_list {
   container "quay.io/biocontainers/synapseclient@sha256:fc96a0c4cf72ff143419314e8b23cea1d266d495c55f45b1901fa0cc77e67153"
   cpus 1
   memory "2 GB"
+  scratch "/scratch"
 
   input:
   val synapse_uuid from params.fve_db_list_synapse
@@ -75,28 +79,64 @@ process fetch_db_list {
   """  
 }
 
-// process fast_virome_explorer {
+process fast_virome_explorer {
 
-//   // container "quay.io/fhcrc-microbiome/fastviromeexplorer@sha256:555103371bc4b21be7fba64732e431f5bfc5ba2cf9305397ea8b4a5bb9a45f32"
-//   cpus 4
-//   memory "16 GB"
+  container "quay.io/fhcrc-microbiome/fastviromeexplorer@sha256:555103371bc4b21be7fba64732e431f5bfc5ba2cf9305397ea8b4a5bb9a45f32"
+  cpus 4
+  memory "16 GB"
+  scratch "/scratch"
+  publishDir params.outdir
 
-//   input:
-//   each file(sample_fastq) from sample_fastq_ch
-//   file fve_db_ix
-//   file fve_db_list
+  input:
+  file db_idx from fve_db_idx
+  file db_list from fve_db_list
+  file sample_fastq from sample_fastq_fve
 
-//   output:
-//   "${sample_fastq}.fve.tsv"
+  output:
+  file "${sample_fastq}.fve.tsv"
 
-//   """
-//     java \
-//     -cp /usr/local/FastViromeExplorer/bin \
-//     FastViromeExplorer \
-//     -l ${fve_db_list} \
-//     -1 ${sample_fastq} \
-//     -i ${fve_db} \
-//     -o ./ && \
-//     mv FastViromeExplorer-final-sorted-abundance.tsv ${sample_fastq}.fve.tsv
-//   """
-// }
+  """
+  set -e;
+  
+  java \
+  -cp /usr/local/FastViromeExplorer/bin \
+  FastViromeExplorer \
+  -l ${db_list} \
+  -1 ${sample_fastq} \
+  -i ${db_idx} \
+  -o ./
+  
+  ls -lhtr;
+
+  mv FastViromeExplorer-final-sorted-abundance.tsv ${sample_fastq}.fve.tsv;
+
+  rm ${db_idx}
+
+  """
+}
+
+
+process kraken {
+
+  container "quay.io/fhcrc-microbiome/kraken2@sha256:ae4e647c2dd61c2f5595fd6682d50a4bde55fe9ba5e2ace424b70e68e205b8a6"
+  cpus 32
+  memory "200 GB"
+  scratch "/scratch"
+  publishDir params.outdir
+
+  input:
+  val kraken_db from params.kraken_db
+  file sample_fastq from sample_fastq_kraken
+
+  output:
+  file "${sample_fastq}.kraken.report.tsv"
+
+  """
+  /home/ec2-user/miniconda/bin/aws s3 sync ${kraken_db} kraken_db/
+
+  kraken2 --db kraken_db --threads 32 --report ${sample_fastq}.kraken.report.tsv --output ${sample_fastq}.kraken.tsv ${sample_fastq}
+
+  rm -r kraken_db
+
+  """
+}
