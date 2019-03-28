@@ -12,6 +12,7 @@ process fetch_sample_fastq {
   container "quay.io/biocontainers/synapseclient@sha256:fc96a0c4cf72ff143419314e8b23cea1d266d495c55f45b1901fa0cc77e67153"
   cpus 1
   memory "2 GB"
+  errorStrategy 'retry'
 
   input:
   val synapse_uuid from sample_sheet_ch
@@ -40,6 +41,7 @@ process fetch_db_idx {
   container "quay.io/biocontainers/synapseclient@sha256:fc96a0c4cf72ff143419314e8b23cea1d266d495c55f45b1901fa0cc77e67153"
   cpus 1
   memory "2 GB"
+  errorStrategy 'retry'
 
   input:
   val synapse_uuid from params.fve_db_idx_synapse
@@ -61,6 +63,7 @@ process fetch_db_list {
   container "quay.io/biocontainers/synapseclient@sha256:fc96a0c4cf72ff143419314e8b23cea1d266d495c55f45b1901fa0cc77e67153"
   cpus 1
   memory "2 GB"
+  errorStrategy 'retry'
 
   input:
   val synapse_uuid from params.fve_db_list_synapse
@@ -82,6 +85,7 @@ process fast_virome_explorer {
   container "quay.io/fhcrc-microbiome/fastviromeexplorer@sha256:555103371bc4b21be7fba64732e431f5bfc5ba2cf9305397ea8b4a5bb9a45f32"
   cpus 4
   memory "16 GB"
+  errorStrategy 'retry'
   publishDir params.outdir
 
   input:
