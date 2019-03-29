@@ -6,6 +6,9 @@ synapse_password = params.synapse_password
 params.fve_db_idx_synapse = "syn18378932"
 params.fve_db_list_synapse = "syn18378769"
 kraken_db = file(params.kraken_db)
+params.fve_cr = "0.1"
+params.fve_co = "0.01"
+params.fve_cn = "1"
 
 process fetch_sample_fastq {
 
@@ -105,9 +108,10 @@ process fast_virome_explorer {
   -l ${db_list} \
   -1 ${sample_fastq} \
   -i ${db_idx} \
-  -o ./
-  
-  ls -lhtr;
+  -o ./ \
+  -cr ${params.fve_cr} \
+  -co ${params.fve_co} \
+  -cn ${params.fve_cn}
 
   mv FastViromeExplorer-final-sorted-abundance.tsv ${sample_fastq}.fve.tsv;
 
