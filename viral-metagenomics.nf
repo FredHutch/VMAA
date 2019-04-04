@@ -6,8 +6,8 @@ synapse_password = params.synapse_password
 params.fve_db_idx_synapse = "syn18378932"
 params.fve_db_list_synapse = "syn18378769"
 kraken_db = file(params.kraken_db)
-params.fve_cr = "0.1"
-params.fve_co = "0.01"
+params.fve_cr = "0"
+params.fve_co = "0"
 params.fve_cn = "1"
 
 process fetch_sample_fastq {
@@ -86,8 +86,8 @@ process fetch_db_list {
 process fast_virome_explorer {
 
   container "quay.io/fhcrc-microbiome/fastviromeexplorer@sha256:555103371bc4b21be7fba64732e431f5bfc5ba2cf9305397ea8b4a5bb9a45f32"
-  cpus 4
-  memory "16 GB"
+  cpus 16
+  memory "120 GB"
   errorStrategy 'retry'
   publishDir params.outdir
 
