@@ -94,12 +94,13 @@ process align_viral_genomes {
   each file(input_fastq) from sample_fastq_bwa
   
   output:
-  val record
+  file "*.bam" into bam_ch
 
   """
   tar xvf ${genome_index}
   genome_name=\$(echo ${genome_index} | sed 's/.tar//')
   bwa mem -t 8 \$genome_name ${input_fastq} | samtools view -b -F 4 -o ${input_fastq}.\$genome_name.bam
+  rm ${input_fastq}
   """
 
 }//   """
