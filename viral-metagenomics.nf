@@ -5,11 +5,9 @@ Channel.fromPath("${params.input_directory}*fastq.gz")
        .into{ sample_fastq_kraken; sample_fastq_bwa; sample_fastq_viral_kraken}
 kraken_db = file(params.kraken_db)
 kraken_viral_db = file(params.kraken_viral_db)
-viral_genome_ch = Channel.from(file(params.viral_genome_csv).readLines())
-                         .splitCsv()
-                         .map{it -> it[2]}
-                         .filter( ~/^ftp.*/ )
-                         .filter( ~/.*fna$/ )
+viral_genome_ch = Channel.from(file(params.viral_genome_csv))
+                         .splitCsv(header: true)
+                         .map{it -> it.genome_ftp}
                          .take(10)
                          .map{ it -> file(it) }
 
@@ -104,4 +102,11 @@ process align_viral_genomes {
   bwa mem -t 8 \$genome_name ${input_fastq} | samtools view -b -F 4 -o ${input_fastq}.\$genome_name.bam
   """
 
-}
+}//   """
+//   #!/usr/bin/env python3
+  
+
+
+//   """
+
+// }
