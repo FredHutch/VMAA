@@ -176,6 +176,7 @@ nerror = float(read_line("${stats}", "SN\\terror rate:").split("\\t")[0])
 nbases = pileup[3].sum()
 
 output = dict()
+output["file"] = "${pileup}".replace(".pileup", "")
 output["depth"] = nbases / reflen
 output["coverage"] = covlen / reflen
 output["error"] = nerror
@@ -198,7 +199,7 @@ process collect {
   cpus 1
   memory "4 GB"
   publishDir "${params.output_directory}/"
-  // errorStrategy 'retry'
+  errorStrategy 'retry'
 
   input:
   file all_jsons from all_stats_ch.collect()
