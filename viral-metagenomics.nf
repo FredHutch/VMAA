@@ -11,58 +11,58 @@ viral_genome_ch = Channel.from(file(params.viral_genome_csv))
                          .take(10)
                          .map{ it -> file(it) }
 
-process kraken {
+// process kraken {
 
-  container "quay.io/fhcrc-microbiome/kraken2@sha256:ae4e647c2dd61c2f5595fd6682d50a4bde55fe9ba5e2ace424b70e68e205b8a6"
-  cpus 32
-  memory "240 GB"
-  publishDir params.outdir
-  errorStrategy 'retry'
+//   container "quay.io/fhcrc-microbiome/kraken2@sha256:ae4e647c2dd61c2f5595fd6682d50a4bde55fe9ba5e2ace424b70e68e205b8a6"
+//   cpus 32
+//   memory "240 GB"
+//   publishDir "${params.output_directory}/kraken"
+//   errorStrategy 'retry'
 
-  input:
-  file kraken_db
-  file sample_fastq from sample_fastq_kraken
+//   input:
+//   file kraken_db
+//   file sample_fastq from sample_fastq_kraken
 
-  output:
-  file "${sample_fastq}.kraken.report.tsv"
+//   output:
+//   file "${sample_fastq}.kraken.report.tsv"
 
-  """
-  set -e
-  tar xvf ${kraken_db}
-  rm ${kraken_db}
+//   """
+//   set -e
+//   tar xvf ${kraken_db}
+//   rm ${kraken_db}
 
-  kraken2 --db ${kraken_db.simpleName} --threads 32 --report ${sample_fastq}.kraken.report.tsv --output ${sample_fastq}.kraken.tsv ${sample_fastq}
+//   kraken2 --db ${kraken_db.simpleName} --threads 32 --report ${sample_fastq}.kraken.report.tsv --output ${sample_fastq}.kraken.tsv ${sample_fastq}
 
-  rm -rf ${kraken_db.simpleName}
-  """
-}
+//   rm -rf ${kraken_db.simpleName}
+//   """
+// }
 
 
-process viral_kraken {
+// process viral_kraken {
 
-  container "quay.io/fhcrc-microbiome/kraken2@sha256:ae4e647c2dd61c2f5595fd6682d50a4bde55fe9ba5e2ace424b70e68e205b8a6"
-  cpus 32
-  memory "240 GB"
-  publishDir params.outdir
-  errorStrategy 'retry'
+//   container "quay.io/fhcrc-microbiome/kraken2@sha256:ae4e647c2dd61c2f5595fd6682d50a4bde55fe9ba5e2ace424b70e68e205b8a6"
+//   cpus 32
+//   memory "240 GB"
+//   publishDir "${params.output_directory}/viral_kraken"
+//   errorStrategy 'retry'
 
-  input:
-  file kraken_viral_db
-  file sample_fastq from sample_fastq_viral_kraken
+//   input:
+//   file kraken_viral_db
+//   file sample_fastq from sample_fastq_viral_kraken
 
-  output:
-  file "${sample_fastq}.viral.kraken.report.tsv"
+//   output:
+//   file "${sample_fastq}.viral.kraken.report.tsv"
 
-  """
-  set -e
-  tar xvf ${kraken_viral_db}
-  rm ${kraken_viral_db}
+//   """
+//   set -e
+//   tar xvf ${kraken_viral_db}
+//   rm ${kraken_viral_db}
 
-  kraken2 --db ${kraken_viral_db.simpleName} --threads 32 --report ${sample_fastq}.viral.kraken.report.tsv --output ${sample_fastq}.viral.kraken.tsv ${sample_fastq}
+//   kraken2 --db ${kraken_viral_db.simpleName} --threads 32 --report ${sample_fastq}.viral.kraken.report.tsv --output ${sample_fastq}.viral.kraken.tsv ${sample_fastq}
 
-  rm -rf ${kraken_viral_db.simpleName}
-  """
-}
+//   rm -rf ${kraken_viral_db.simpleName}
+//   """
+// }
 
 process index_viral_genomes {
   container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
@@ -119,7 +119,7 @@ process align_viral_genomes {
 
 }
 
-process summarize_viral_alignments {
+process alignment_stats {
   container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
   cpus 1
   memory "1 GB"
@@ -130,9 +130,7 @@ process summarize_viral_alignments {
   file bam from bam_ch
   
   output:
-  file "${bam}.idxstats" into idxstats_ch
-  file "${bam}.stats" into stats_ch
-  file "${bam}.pileup" into pileup_ch
+  set file("${bam}.idxstats"), file("${bam}.stats"), file("${bam}.pileup") into stats_ch
 
   """
   samtools sort ${bam} > ${bam}.sorted
@@ -144,11 +142,81 @@ process summarize_viral_alignments {
 
   """
 
-}//   """
-//   #!/usr/bin/env python3
+}
+
+process summarize_each {
+  container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+  cpus 1
+  memory "4 GB"
+  // errorStrategy 'retry'
+
+  input:
+  set file(idxstats), file(stats), file(pileup) from stats_ch
   
+  output:
+  file "*json" into all_stats_ch
 
+  """
+#!/usr/bin/env python3
+import os
+import json
+import pandas as pd
 
-//   """
+def read_line(fp, prefix):
+    with open(fp, 'rt') as f:
+        for line in f:
+            if line.startswith(prefix):
+                return line.replace(prefix, '').strip(" ").strip("\\t")
 
-// }
+pileup = pd.read_csv("${pileup}", sep="\\t", header=None)
+n_reads = int(read_line("${stats}", "SN\\treads mapped:"))
+reflen = int(pd.read_csv("${idxstats}", sep="\\t", header=None).iloc[0, 1])
+covlen = pileup[3].shape[0]
+nerror = float(read_line("${stats}", "SN\\terror rate:").split("\\t")[0])
+nbases = pileup[3].sum()
+
+output = dict()
+output["depth"] = nbases / reflen
+output["coverage"] = covlen / reflen
+output["error"] = nerror
+output["genome_length"] = reflen
+output["n_reads"] = n_reads
+
+json_fp = "${pileup}".replace(".pileup", ".json")
+assert json_fp.endswith(".json")
+with open(json_fp, "wt") as fo:
+    fo.write(json.dumps(output, indent=4))
+
+assert os.path.exists(json_fp)
+
+  """
+
+}
+
+process collect {
+  container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+  cpus 1
+  memory "4 GB"
+  publishDir "${params.output_directory}/"
+  // errorStrategy 'retry'
+
+  input:
+  file all_jsons from all_stats_ch.collect()
+  
+  output:
+  file "${params.output_csv}"
+
+  """
+#!/usr/bin/env python3
+import os
+import json
+import pandas as pd
+
+pd.DataFrame([
+    json.load(open(fp, "rt"))
+    for fp in os.listdir(".")
+    if fp.endswith(".json")
+]).to_csv("${params.output_csv}", index=None)
+"""
+
+}
