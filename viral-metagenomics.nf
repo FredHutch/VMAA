@@ -148,7 +148,7 @@ process summarize_each {
   container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
   cpus 1
   memory "4 GB"
-  // errorStrategy 'retry'
+  errorStrategy 'retry'
 
   input:
   set file(idxstats), file(stats), file(pileup) from stats_ch
