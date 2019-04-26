@@ -88,19 +88,56 @@ process align_viral_genomes {
   cpus 8
   memory "8 GB"
   errorStrategy 'retry'
+  publishDir "${params.output_directory}/bam/"
 
   input:
   file genome_index from indexed_genomes
   each file(input_fastq) from sample_fastq_bwa
   
   output:
-  file "*.bam" into bam_ch
+  file "*.bam" optional true into bam_ch
 
   """
   tar xvf ${genome_index}
   genome_name=\$(echo ${genome_index} | sed 's/.tar//')
   bwa mem -t 8 \$genome_name ${input_fastq} | samtools view -b -F 4 -o ${input_fastq}.\$genome_name.bam
   rm ${input_fastq}
+  
+  # If zero reads were aligned, delete the BAM file
+  [[ -f ${input_fastq}.\$genome_name.bam ]] && \
+  [[ ! -s ${input_fastq}.\$genome_name.bam ]] && \
+  rm ${input_fastq}.\$genome_name.bam
+  
+  [[ -s ${input_fastq}.\$genome_name.bam ]] && \
+  (( \$(samtools view ${input_fastq}.\$genome_name.bam | wc -l) == 0 )) && \
+  rm ${input_fastq}.\$genome_name.bam
+    """
+
+}
+
+process summarize_viral_alignments {
+  container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
+  cpus 1
+  memory "1 GB"
+  errorStrategy 'retry'
+  publishDir "${params.output_directory}/stats/"
+
+  input:
+  file bam from bam_ch
+  
+  output:
+  file "${bam}.idxstats" into idxstats_ch
+  file "${bam}.stats" into stats_ch
+  file "${bam}.pileup" into pileup_ch
+
+  """
+  samtools sort ${bam} > ${bam}.sorted
+  samtools stats ${bam}.sorted > ${bam}.stats
+  samtools index ${bam}.sorted
+  samtools idxstats ${bam}.sorted > ${bam}.idxstats
+  samtools mpileup ${bam}.sorted > ${bam}.pileup
+  rm ${bam}.sorted ${bam}
+
   """
 
 }//   """
