@@ -101,16 +101,20 @@ process align_viral_genomes {
   tar xvf ${genome_index}
   genome_name=\$(echo ${genome_index} | sed 's/.tar//')
   bwa mem -t 8 \$genome_name ${input_fastq} | samtools view -b -F 4 -o ${input_fastq}.\$genome_name.bam
+  echo Done aligning
   rm ${input_fastq}
+  echo Removed input file
   
   # If zero reads were aligned, delete the BAM file
   [[ -f ${input_fastq}.\$genome_name.bam ]] && \
   [[ ! -s ${input_fastq}.\$genome_name.bam ]] && \
   rm ${input_fastq}.\$genome_name.bam
+  echo Checked for empty file
   
   [[ -s ${input_fastq}.\$genome_name.bam ]] && \
   (( \$(samtools view ${input_fastq}.\$genome_name.bam | wc -l) == 0 )) && \
   rm ${input_fastq}.\$genome_name.bam
+  echo Done
     """
 
 }
