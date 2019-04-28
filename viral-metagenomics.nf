@@ -89,30 +89,33 @@ process align_viral_genomes {
   publishDir "${params.output_directory}/bam/"
 
   input:
-  file genome_index from indexed_genomes
+  file genome_index from indexed_genomes.collate(1000)
   each file(input_fastq) from sample_fastq_bwa
   
   output:
   file "*.bam" optional true into bam_ch
 
   """
-  tar xvf ${genome_index}
-  genome_name=\$(echo ${genome_index} | sed 's/.tar//')
-  bwa mem -t 8 \$genome_name ${input_fastq} | samtools view -b -F 4 -o ${input_fastq}.\$genome_name.bam
-  echo Done aligning
+  for genome_index in *tar; do
+    echo Processing \$genome_index
+    tar xvf \$genome_index
+    genome_name=\$(echo \$genome_index | sed 's/.tar//')
+    bwa mem -t 8 \$genome_name ${input_fastq} | samtools view -b -F 4 -o ${input_fastq}.\$genome_name.bam
+    echo Done aligning to \$genome_name
+    
+    # If zero reads were aligned, delete the BAM file
+    [[ -f ${input_fastq}.\$genome_name.bam ]] && \
+    [[ ! -s ${input_fastq}.\$genome_name.bam ]] && \
+    rm ${input_fastq}.\$genome_name.bam
+    echo Checked for empty file
+    
+    [[ -s ${input_fastq}.\$genome_name.bam ]] && \
+    (( \$(samtools view ${input_fastq}.\$genome_name.bam | wc -l) == 0 )) && \
+    rm ${input_fastq}.\$genome_name.bam
+    echo Done with \$genome_name
+  done
   rm ${input_fastq}
   echo Removed input file
-  
-  # If zero reads were aligned, delete the BAM file
-  [[ -f ${input_fastq}.\$genome_name.bam ]] && \
-  [[ ! -s ${input_fastq}.\$genome_name.bam ]] && \
-  rm ${input_fastq}.\$genome_name.bam
-  echo Checked for empty file
-  
-  [[ -s ${input_fastq}.\$genome_name.bam ]] && \
-  (( \$(samtools view ${input_fastq}.\$genome_name.bam | wc -l) == 0 )) && \
-  rm ${input_fastq}.\$genome_name.bam
-  echo Done
     """
 
 }
