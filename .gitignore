@@ -1,6 +1,5 @@
 .nextflow.log*
 .nextflow
 work/
-nextflow.config
 run.sh
 make_job_definition.sh
