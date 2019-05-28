@@ -4,10 +4,26 @@ Channel.fromPath("${params.input_directory}*fastq.gz")
        .into{ sample_fastq_kraken; sample_fastq_bwa; sample_fastq_viral_kraken}
 // kraken_db = file(params.kraken_db)
 // kraken_viral_db = file(params.kraken_viral_db)
-viral_genome_ch = Channel.from(file(params.viral_genome_csv))
+viral_accession_ch = Channel.from(file(params.viral_genome_csv))
                          .splitCsv(header: true)
-                         .map{it -> it.genome_ftp}
-                         .map{ it -> file(it) }
+                         .map{it -> it.accession}
+
+process get_ncbi_accession{
+  container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
+  cpus 1
+  memory "1 GB"
+  errorStrategy 'retry'
+
+  input:
+  val accession from viral_accession_ch
+  
+  output:
+  file "${accession}.fasta" into viral_genome_ch
+  
+  """
+  wget -O ${accession}.fasta "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=${accession}&rettype=fasta&retmode=text"
+  """
+}
 
 // process kraken {
 
@@ -83,7 +99,7 @@ process index_viral_genomes {
 
 process align_viral_genomes {
   container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
-  cpus 8
+  cpus 4
   memory "8 GB"
   errorStrategy 'retry'
   publishDir "${params.output_directory}/bam/"
