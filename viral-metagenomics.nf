@@ -44,7 +44,7 @@ process countReads {
 set -e
 
 n=\$(gunzip -c "${fastq}" | awk 'NR % 4 == 1' | wc -l)
-echo "${fastq},n_reads,\$n" > "${fastq}.counts.csv"
+echo "${fastq},\$n" > "${fastq}.counts.csv"
 
   """
 
@@ -241,6 +241,25 @@ assert os.path.exists(json_fp)
 
 }
 
+process collectCounts {
+  container "ubuntu:16.04"
+  cpus 1
+  memory "4 GB"
+  errorStrategy 'retry'
+
+  input:
+  file readcounts from counts.collect()
+  
+  output:
+  file "readcounts.csv" into readcounts_csv
+
+  """
+  echo file,n_reads > TEMP
+  cat *csv >> TEMP && rm *csv && mv TEMP readcounts.csv
+  """
+
+}
+
 process collect {
   container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
   cpus 1
@@ -250,6 +269,7 @@ process collect {
 
   input:
   file all_jsons from all_stats_ch.collect()
+  file readcounts_csv
   
   output:
   file "${params.output_csv}"
@@ -260,30 +280,30 @@ import os
 import json
 import pandas as pd
 
-pd.DataFrame([
+readcounts = pd.read_csv("${readcounts_csv}").set_index(
+    "file"
+)["n_reads"].to_dict
+
+def match_file_name(file_name):
+    match = None
+    for k, v in readcounts.items():
+        if file_name.startswith(k):
+            assert match is None, "Duplicate file name matching: %s" % (file_name)
+            match = v
+    return v
+
+df = pd.DataFrame([
     json.load(open(fp, "rt"))
     for fp in os.listdir(".")
     if fp.endswith(".json")
-]).to_csv("${params.output_csv}", index=None)
+])
+
+df["total_reads"] = df["file"].apply(match_file_name)
+assert df["total_reads"].isnull().sum() == 0
+df["prop_reads"] = df["n_reads"] / df["total_reads"]
+
+df.to_csv("${params.output_csv}", index=None)
+
 """
-
-}
-
-process collectCounts {
-  container "ubuntu:16.04"
-  cpus 1
-  memory "4 GB"
-  publishDir "${params.output_directory}/"
-  errorStrategy 'retry'
-
-  input:
-  file readcounts from counts.collect()
-  
-  output:
-  file "readcounts.csv"
-
-  """
-  cat *csv > TEMP && rm *csv && mv TEMP readcounts.csv
-  """
 
 }
