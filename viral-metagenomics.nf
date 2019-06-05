@@ -282,7 +282,7 @@ import pandas as pd
 
 readcounts = pd.read_csv("${readcounts_csv}").set_index(
     "file"
-)["n_reads"].to_dict
+)["n_reads"].to_dict()
 
 def match_file_name(file_name):
     match = None
