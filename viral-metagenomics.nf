@@ -29,6 +29,7 @@ process countReads {
   container "ubuntu:16.04"
   cpus 1
   memory "4 GB"
+  errorStrategy 'retry'
   
   input:
   file fastq from count_reads
@@ -43,7 +44,12 @@ process countReads {
 
 set -e
 
+gzip -t "${fastq}"
+
 n=\$(gunzip -c "${fastq}" | awk 'NR % 4 == 1' | wc -l)
+
+(( \$n > 0 ))
+
 echo "${fastq},\$n" > "${fastq}.counts.csv"
 
   """
@@ -300,6 +306,7 @@ df = pd.DataFrame([
 
 df["total_reads"] = df["file"].apply(match_file_name)
 assert df["total_reads"].isnull().sum() == 0
+assert (df["total_reads"] > 0).all()
 df["prop_reads"] = df["n_reads"] / df["total_reads"]
 
 df.to_csv("${params.output_csv}", index=None)
