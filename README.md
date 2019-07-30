@@ -1,9 +1,9 @@
-# Nextflow tools for viral metagenomics
+# Viral Metagenomics by Nucleotide Alignment
 
 
 ### Goal
 
-To create a reproducible pipeline for viral metagenomics that is
+Reproducible computational pipeline for viral metagenomics that is
 relatively portable between computational infrastructures.
 
 
