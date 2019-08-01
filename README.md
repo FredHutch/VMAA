@@ -50,7 +50,7 @@ That file will be placed in the `--output_directory` folder.
 ```
 nextflow \
     run \
-        viral-metagenomics.nf \
+        FredHutch/nf-viral-metagenomics \
         --input_directory <INPUT_DIRECTORY> \
         --output_directory <OUTPUT_DIRECTORY> \
         --viral_genome_csv <VIRAL_GENOME_CSV> \
