@@ -146,7 +146,7 @@ process alignment_stats {
 process summarize_each {
   container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
   cpus 4
-  memory "16 GB"
+  memory "30 GB"
   errorStrategy 'retry'
 
   input:
