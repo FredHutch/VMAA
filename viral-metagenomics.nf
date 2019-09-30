@@ -9,8 +9,6 @@ viral_accession_ch = Channel.from(file(params.viral_genome_csv))
 
 process get_ncbi_accession{
   container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
-  cpus 1
-  memory "1 GB"
   errorStrategy 'retry'
 
   input:
@@ -27,8 +25,6 @@ process get_ncbi_accession{
 // Count the number of reads
 process countReads {
   container "ubuntu:16.04"
-  cpus 1
-  memory "4 GB"
   errorStrategy 'retry'
   
   input:
@@ -58,8 +54,6 @@ echo "${fastq},\$n" > "${fastq}.counts.csv"
 
 process index_viral_genomes {
   container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
-  cpus 1
-  memory "1 GB"
   errorStrategy 'retry'
 
   input:
@@ -77,8 +71,6 @@ process index_viral_genomes {
 
 process align_viral_genomes {
   container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
-  cpus 4
-  memory "8 GB"
   errorStrategy 'retry'
   publishDir "${params.output_directory}/bam/"
 
@@ -116,8 +108,6 @@ process align_viral_genomes {
 
 process alignment_stats {
   container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
-  cpus 1
-  memory "4 GB"
   errorStrategy 'retry'
   publishDir "${params.output_directory}/stats/"
 
@@ -145,8 +135,6 @@ process alignment_stats {
 
 process summarize_each {
   container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
-  cpus 4
-  memory "30 GB"
   errorStrategy 'retry'
 
   input:
@@ -249,8 +237,6 @@ assert os.path.exists(json_fp)
 
 process collectCounts {
   container "ubuntu:16.04"
-  cpus 1
-  memory "4 GB"
   errorStrategy 'retry'
 
   input:
@@ -268,8 +254,6 @@ process collectCounts {
 
 process collect {
   container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
-  cpus 1
-  memory "4 GB"
   publishDir "${params.output_directory}/"
   errorStrategy 'retry'
 
