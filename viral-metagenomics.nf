@@ -75,7 +75,7 @@ process align_viral_genomes {
   publishDir "${params.output_directory}/bam/"
 
   input:
-  file genome_index from indexed_genomes.toSortedList().flatten().collate(100)
+  file genome_index from indexed_genomes.toSortedList().flatten().collate(10)
   each file(input_fastq) from sample_fastq_bwa
   
   output:
