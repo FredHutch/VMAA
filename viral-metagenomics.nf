@@ -81,6 +81,8 @@ process align_viral_genomes {
   output:
   file "*.bam" optional true into bam_ch
 
+  afterScript "rm *"
+
   """
   for genome_index in *tar; do
     echo Processing \$genome_index
@@ -100,8 +102,7 @@ process align_viral_genomes {
     rm ${input_fastq}.\$genome_name.bam
     echo Done with \$genome_name
   done
-  rm ${input_fastq}
-  echo Removed input file
+
     """
 
 }
