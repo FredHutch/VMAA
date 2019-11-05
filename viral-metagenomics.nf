@@ -281,7 +281,7 @@ def match_file_name(file_name):
         if file_name.startswith(k):
             assert match is None, "Duplicate file name matching: %s" % (file_name)
             match = v
-    return v
+    return match
 
 df = pd.DataFrame([
     json.load(open(fp, "rt"))
