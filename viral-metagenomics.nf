@@ -222,7 +222,7 @@ output["depth"] = nbases / reflen
 output["coverage"] = covlen / reflen
 output["error"] = nerror
 output["genome_length"] = reflen
-output["n_reads"] = nreads
+output["n_reads"] = n_reads
 output["entropy"] = sdi
 
 json_fp = "${pileup}".replace(".pileup", ".json")
