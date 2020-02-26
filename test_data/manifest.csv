@@ -1,0 +1,3 @@
+specimen,fastq
+sample_1,test_data/simulated_reads/sample_1.fq.gz
+sample_2,test_data/simulated_reads/sample_2.fq.gz
