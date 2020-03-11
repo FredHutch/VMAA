@@ -1,5 +1,57 @@
 #!/usr/bin/env nextflow
 
+// Combine files which share a specimen label
+workflow join_fastqs_by_specimen {
+    take:
+        fastq_ch
+
+    main:
+        fastq_ch.map {
+            r -> [r["specimen"], file(r["fastq"])]
+        }.groupTuple(
+        ).branch {  // Split up the samples which have multiple FASTQ files
+            single: it[1].size() == 1
+            multiple: it[1].size() > 1
+        }.set {
+            grouped_fastq
+        }
+
+        // Join the FASTQ files for those samples
+        joinFastq(
+            grouped_fastq.multiple
+        )
+
+    emit:
+        // Return a channel with every specimen represented as a tuple
+        // with the specimen name and the FASTQ file
+        joinFastq.out.mix(
+          grouped_fastq.single.map {
+            it -> [it[0], it[1][0]]
+          }
+        )
+}
+
+// Count the number of reads
+process joinFastq {
+  container "ubuntu:16.04"
+  errorStrategy 'retry'
+  
+  input:
+  tuple val(specimen), path(fastq_list)
+  
+  output:
+  tuple val(specimen), path("${specimen}.fastq.gz")
+
+  """
+#!/bin/bash
+
+set -e
+
+cat ${fastq_list} > TEMP && mv TEMP "${specimen}.fastq.gz"
+  """
+
+}
+
 // Count the number of reads
 process countReads {
   container "ubuntu:16.04"
