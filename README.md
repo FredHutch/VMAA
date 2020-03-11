@@ -1,4 +1,4 @@
-# Viral Metagenomics by Nucleotide Alignment
+# Viral Metagenomics by Assembly and Alignment (VMAA)
 
 
 ### Goal
@@ -18,3 +18,9 @@ The analytical workflow will perform the following steps for each sample:
   5. Map reads against contigs
   6. Calculate summary metrics for each contig
   7. Collect results across all samples
+
+
+### Invoking the pipeline
+
+The VMAA pipeline can be invoked by running `nextflow` against
+this repository, e.g. `nextflow run FredHutch/VMAA <ARGS>`.
