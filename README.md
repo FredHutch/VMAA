@@ -24,3 +24,19 @@ The analytical workflow will perform the following steps for each sample:
 
 The VMAA pipeline can be invoked by running `nextflow` against
 this repository, e.g. `nextflow run FredHutch/VMAA <ARGS>`.
+
+```
+Usage:
+
+nextflow run FredHutch/VMAA <ARGUMENTS>
+
+Required Arguments:
+  --manifest            CSV file listing samples (see below)
+  --output_folder       Folder to place analysis outputs
+  --output_prefix       Text used as a prefix for output files
+  --human_genome_tar    Indexed human genome, gzipped tarball
+
+Manifest:
+  The manifest is a CSV with a header indicating which samples correspond to which files.
+  The file must contain the columns `specimen` and `fastq`. FASTQ files should be gzip-compressed.
+```
