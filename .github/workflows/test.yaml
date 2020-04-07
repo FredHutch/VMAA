@@ -23,5 +23,5 @@ jobs:
           docker rmi $(docker image ls -aq)
           df -h
       - name:  Run workflow
-      run: |
-      nextflow run viral-metagenomics.nf --manifest test_data/manifest.csv --output_folder output --output_prefix output --human_genome_tar test_data/human_mitochondrial_genome.fasta.tar.gz -profile testing -with-docker ubuntu:20.04
+        run: |
+        nextflow run viral-metagenomics.nf --manifest test_data/manifest.csv --output_folder output --output_prefix output --human_genome_tar test_data/human_mitochondrial_genome.fasta.tar.gz -profile testing -with-docker ubuntu:20.04
