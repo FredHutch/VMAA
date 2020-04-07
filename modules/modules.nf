@@ -8,6 +8,8 @@ params.adapter_R = "CTGTCTCTTATACACATCT"
 container__cutadapt = "quay.io/fhcrc-microbiome/cutadapt:cutadapt_2.3_bcw_0.3.1"
 container__bwa = "quay.io/fhcrc-microbiome/bwa:bwa.0.7.17__bcw.0.3.0I"
 container__assembler = "quay.io/biocontainers/megahit:1.2.9--h8b12597_0"
+container__ubuntu = "ubuntu:20.04"
+container__pandas = "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
 
 // Combine files which share a specimen label
 workflow join_fastqs_by_specimen {
@@ -42,7 +44,7 @@ workflow join_fastqs_by_specimen {
 
 // Count the number of reads
 process joinFastq {
-  container "ubuntu:16.04"
+  container "${container__ubuntu}"
   errorStrategy 'retry'
   
   input:
@@ -100,11 +102,11 @@ process remove_human {
 
 
     input:
-        tuple sample_name, file(FASTQ)
+        tuple sample_name, file("${sample_name}.input.fq.gz")
         file hg_index_tgz
 
     output:
-        tuple sample_name, file("${sample_name}.nohuman.fq.gz")
+        tuple sample_name, file("${sample_name}.fq.gz")
 
 """
 #!/bin/bash
@@ -134,7 +136,7 @@ bwa mem -t ${task.cpus} \
 -T ${params.min_hg_align_score} \
 -o alignment.sam \
 hg_index/\$bwa_index_prefix \
-${FASTQ}
+${sample_name}.input.fq.gz
 
 echo Checking if alignment is empty  
 [[ -s alignment.sam ]]
@@ -145,11 +147,11 @@ samtools \
   --threads ${task.cpus} \
   -f 4 \
   -n \
-  | gzip -c > ${sample_name}.nohuman.fq.gz
+  | gzip -c > ${sample_name}.fq.gz
 
 echo Checking to see how many reads pass the human filtering
-gunzip -c ${sample_name}.nohuman.fq.gz | wc -l
-(( \$(gunzip -c ${sample_name}.nohuman.fq.gz | wc -l) > 0 ))
+gunzip -c ${sample_name}.fq.gz | wc -l
+(( \$(gunzip -c ${sample_name}.fq.gz | wc -l) > 0 ))
 
 echo Done 
 """
@@ -199,7 +201,8 @@ echo -e "\\nDone\\n"
 
 // Count the number of reads
 process countReads {
-  container "ubuntu:16.04"
+  container "${container__ubuntu}"
+  label 'io_limited'
   errorStrategy 'retry'
   
   input:
@@ -227,7 +230,8 @@ echo "${sample_name},\$n,${params.count_reads_label}" > "${sample_name}.${params
 
 // Join the countReads CSV
 process collectCountReads {
-  container "ubuntu:16.04"
+  container "${container__ubuntu}"
+  label 'io_limited'
   errorStrategy 'retry'
   
   input:
@@ -247,8 +251,9 @@ cat ${csv_list} >> counts.csv
 
 }
 
-process index_viral_genomes {
-  container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
+process index {
+  container "${container__bwa}"
+  label "mem_medium"
   errorStrategy 'retry'
 
   input:
@@ -258,91 +263,111 @@ process index_viral_genomes {
   file "${genome_fasta}.tar"
   
   """
-  bwa index ${genome_fasta}
-  tar cvf ${genome_fasta}.tar ${genome_fasta}*
+#!/bin/bash
+set -e
+
+echo "Indexing ${genome_fasta}"
+bwa index ${genome_fasta}
+
+echo "Tarring up indexed genome"
+tar cvf ${genome_fasta}.tar ${genome_fasta}*
+echo "Done"
   """
 
 }
 
-process align_viral_genomes {
-  container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
+process align {
+  container "${container__bwa}"
+  label "mem_veryhigh"
   errorStrategy 'retry'
 
   input:
+  tuple val(sample_name), file(input_fastq)
   file genome_index
-  each file(input_fastq)
   
   output:
-  file "*.bam" optional true
-
-  afterScript "rm *"
+  tuple val(sample_name), file("${sample_name}.bam")
 
   """
-  for genome_index in *tar; do
-    echo Processing \$genome_index
-    tar xvf \$genome_index
-    genome_name=\$(echo \$genome_index | sed 's/.tar//')
-    bwa mem -t 8 \$genome_name ${input_fastq} | samtools view -b -F 4 -o ${input_fastq}.\$genome_name.bam
-    echo Done aligning to \$genome_name
-    
-    # If zero reads were aligned, delete the BAM file
-    [[ -f ${input_fastq}.\$genome_name.bam ]] && \
-    [[ ! -s ${input_fastq}.\$genome_name.bam ]] && \
-    rm ${input_fastq}.\$genome_name.bam
-    echo Checked for empty file
-    
-    [[ -s ${input_fastq}.\$genome_name.bam ]] && \
-    (( \$(samtools view ${input_fastq}.\$genome_name.bam | wc -l) == 0 )) && \
-    rm ${input_fastq}.\$genome_name.bam
-    echo Done with \$genome_name
-  done
+#!/bin/bash
+set -e
+
+echo Unpacking ${genome_index}
+tar xvf ${genome_index}
+
+echo "Running BWA"
+bwa mem \
+  -t ${task.cpus} \
+  ${genome_index.name.replaceAll(/.tar/, "")} \
+  ${input_fastq} \
+  | samtools view -b -F 4 -o ${sample_name}.bam
+
+echo Done aligning ${sample_name}.bam
 
     """
 
 }
 
-process alignment_stats {
-  container "quay.io/fhcrc-microbiome/bwa@sha256:2fc9c6c38521b04020a1e148ba042a2fccf8de6affebc530fbdd45abc14bf9e6"
+process calcStats {
+  container "${container__bwa}"
+  label "io_limited"
   errorStrategy 'retry'
 
   input:
-  file bam
+  tuple val(sample_name), file(bam)
   
   output:
-  set file("${bam}.idxstats"), file("${bam}.stats"), file("${bam}.pileup"), file("${bam}.positions")
+  tuple val(sample_name), file("${sample_name}.idxstats"), file("${sample_name}.stats"), file("${sample_name}.pileup"), file("${sample_name}.positions")
 
   """
-  samtools sort ${bam} > ${bam}.sorted
-  samtools stats ${bam}.sorted > ${bam}.stats
-  samtools index ${bam}.sorted
-  samtools idxstats ${bam}.sorted > ${bam}.idxstats
-  samtools mpileup ${bam}.sorted > ${bam}.pileup
+#!/bin/bash
+set -e
 
-  # Make a file with three columns, the bitwise flag, and the leftmost position, and the length of the mapped segment
-  samtools view ${bam}.sorted | awk '{print \$2 "\\t" \$4 "\\t" length(\$10)}' > ${bam}.positions
+samtools sort ${bam} > ${sample_name}.sorted
+samtools stats ${sample_name}.sorted > ${sample_name}.stats
+samtools index ${sample_name}.sorted
+samtools idxstats ${sample_name}.sorted > ${sample_name}.idxstats
+samtools mpileup ${sample_name}.sorted > ${sample_name}.pileup
 
-  rm ${bam}.sorted ${bam}
+# Make a file with four columns, the contig, the bitwise flag, and the leftmost position, and the length of the mapped segment
+samtools view ${sample_name}.sorted | awk '{print \$3 "\\t" \$2 "\\t" \$4 "\\t" length(\$10)}' > ${sample_name}.positions
+
+rm ${sample_name}.sorted
 
   """
 
 }
 
-process summarize_each {
-  container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+process summarize {
+  container "${container__pandas}"
+  label "mem_medium"
   errorStrategy 'retry'
 
   input:
-  set file(idxstats), file(stats), file(pileup), file(positions)
+  tuple val(sample_name), file(idxstats), file(stats), file(pileup), file(positions)
   
   output:
-  file "*json"
+  file "${sample_name}.csv.gz"
 
   """
 #!/usr/bin/env python3
+import logging
 import os
+import gzip
 import json
 import pandas as pd
 from math import log as ln
+
+logFormatter = logging.Formatter(
+    '%(asctime)s %(levelname)-8s [nf-viral-metagenomics] %(message)s'
+)
+rootLogger = logging.getLogger()
+rootLogger.setLevel(logging.INFO)
+
+# Write to STDOUT
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+rootLogger.addHandler(consoleHandler)
 
 def read_line(fp, prefix):
     with open(fp, 'rt') as f:
@@ -391,102 +416,158 @@ def shannon_divesity(counts):
 
 
 # Read in the summary of alignment positions
-positions = pd.read_csv("${positions}", sep="\\t", header=None)
-positions = pd.concat([positions, pd.DataFrame(map(parse_flags, positions[0]))], axis=1)
+logging.info("Reading in ${positions}")
+positions = pd.read_csv(
+  "${positions}", 
+  sep="\\t", 
+  header=None,
+  names = [
+    "contig", "flags", "pos", "len"
+  ]
+)
+
+# Parse the flags columns from the positions file
+logging.info("Parsing flags in ${positions}")
+positions = pd.concat([positions, pd.DataFrame(map(parse_flags, positions["flags"]))], axis=1)
+
+# Find the read start position
 # If the read is aligned in the forward direction, use the leftmost position, otherwise use the rightmost
-position_list = positions.apply(
-    lambda r: r[1] + r[2] if r["rc"] else r[1],
+positions = positions.assign(
+  start_pos = positions.apply(
+    lambda r: r["pos"] + r["len"] if r["rc"] else r["pos"],
     axis=1
-).tolist()
+  )
+)
 
-# Calculate Shannon diversity
-sdi = shannon_divesity(pd.Series(position_list).value_counts().values)
+# Calculate Shannon diversity per contig
+logging.info("Calculating Shannon diversity per contig")
+sdi = positions.groupby(
+  "contig"
+).apply(
+  lambda contig_positions: shannon_divesity(contig_positions["start_pos"].value_counts().values)
+)
 
-pileup = pd.read_csv("${pileup}", sep="\\t", header=None)
-n_reads = int(read_line("${stats}", "SN\\treads mapped:"))
-reflen = int(pd.read_csv("${idxstats}", sep="\\t", header=None).iloc[0, 1])
-covlen = pileup[3].shape[0]
+# Read in the pileup
+logging.info("Reading in ${pileup}")
+pileup = pd.read_csv(
+  "${pileup}", 
+  sep="\\t", 
+  header=None,
+  names = ["contig", "position", "base", "depth", "aligned_bases", "aligned_quality"]
+)
+
+# Get the stats for each contig
+logging.info("Reading in ${idxstats}")
+contig_stats = pd.read_csv(
+  "${idxstats}", 
+  sep="\\t", 
+  header=None,
+  names = ["contig", "len", "mapped", "unmapped"]
+).set_index(
+  "contig"
+)
+
+# Number of positions with any aligned reads per contig
+logging.info("Number of positions with any aligned reads per contig")
+covlen = pileup.query(
+  "depth > 0"
+)["contig"].value_counts()
+
+# Error rate over the entire alignment
+logging.info("Reading overall error rate")
 nerror = float(read_line("${stats}", "SN\\terror rate:").split("\\t")[0])
-nbases = pileup[3].sum()
 
-output = dict()
-output["file"] = "${pileup}".replace(".pileup", "")
-output["depth"] = nbases / reflen
-output["coverage"] = covlen / reflen
-output["error"] = nerror
-output["genome_length"] = reflen
-output["n_reads"] = n_reads
-output["entropy"] = sdi
+# Number of bases aligned per contig
+nbases = pileup.groupby(
+  "contig"
+).apply(
+  lambda df: df["depth"].sum()
+)
 
-json_fp = "${pileup}".replace(".pileup", ".json")
-assert json_fp.endswith(".json")
-with open(json_fp, "wt") as fo:
-    fo.write(json.dumps(output, indent=4))
+# Make a single output object
+logging.info("Making an output object")
+output = dict([
+  ("specimen", "${sample_name}"),
+  ("reads_aligned", positions["contig"].value_counts()),
+  ("bases_aligned", nbases),
+  ("bases_covered", covlen),
+  ("contig_length", contig_stats["len"]),
+  ("error", nerror),
+  ("entropy", sdi),
+  ("specimen_total_reads", contig_stats.reindex(columns=["mapped", "unmapped"]).sum().sum())
+])
 
-assert os.path.exists(json_fp)
+# Format as a DataFrame
+logging.info("Formatting as DataFrame")
+output = pd.DataFrame(
+  output
+).drop(  # Drop the pseudo contig name used for unaligned reads
+  index = "*"
+)
 
-  """
+# Add more summary columns, and reset the index used for the contig name
+logging.info("Adding summary stats")
+output = output.assign(
+  depth = output["bases_aligned"] / output["contig_length"],
+  coverage = output["bases_covered"] / output["contig_length"],
+  proportion_of_reads = output["reads_aligned"] / output["specimen_total_reads"]
+).reset_index(
+).rename(
+  columns = dict([("index", "contig")])
+)
 
-}
+# Write out as CSV
+logging.info("Writing out to ${sample_name}.csv.gz")
+output.to_csv(
+  "${sample_name}.csv.gz", 
+  index=None
+)
 
-process collectCounts {
-  container "ubuntu:16.04"
-  errorStrategy 'retry'
-
-  input:
-  file readcounts
-  
-  output:
-  file "readcounts.csv"
-
-  """
-  echo file,n_reads > TEMP
-  cat *csv >> TEMP && rm *csv && mv TEMP readcounts.csv
   """
 
 }
 
 process collect {
-  container "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+  container "${container__pandas}"
+  label "io_limited"
   errorStrategy 'retry'
 
   input:
-  file all_jsons
-  file readcounts_csv
-  
+  file summary_csv_list
+
   output:
-  file "${params.output_csv}"
+  file "${params.output_prefix}.summary.csv.gz"
 
   """
 #!/usr/bin/env python3
+import logging
 import os
+import gzip
 import json
 import pandas as pd
 
-readcounts = pd.read_csv("${readcounts_csv}").set_index(
-    "file"
-)["n_reads"].to_dict()
+logFormatter = logging.Formatter(
+    '%(asctime)s %(levelname)-8s [nf-viral-metagenomics] %(message)s'
+)
+rootLogger = logging.getLogger()
+rootLogger.setLevel(logging.INFO)
 
-def match_file_name(file_name):
-    match = None
-    for k, v in readcounts.items():
-        if file_name.startswith(k):
-            assert match is None, "Duplicate file name matching: %s" % (file_name)
-            match = v
-    return match
+# Write to STDOUT
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+rootLogger.addHandler(consoleHandler)
 
-df = pd.DataFrame([
-    json.load(open(fp, "rt"))
-    for fp in os.listdir(".")
-    if fp.endswith(".json")
+summary_csv_list = "${summary_csv_list}".split(" ")
+logging.info("Reading in a list of %d summary CSV files" % len(summary_csv_list))
+summary_df = pd.concat([
+  pd.read_csv(fp)
+  for fp in summary_csv_list
 ])
 
-df["total_reads"] = df["file"].apply(match_file_name)
-assert df["total_reads"].isnull().sum() == 0
-assert (df["total_reads"] > 0).all()
-df["prop_reads"] = df["n_reads"] / df["total_reads"]
+logging.info("Saving to ${params.output_prefix}.summary.csv.gz")
+summary_df.to_csv("${params.output_prefix}.summary.csv.gz", index=None)
 
-df.to_csv("${params.output_csv}", index=None)
+logging.info("Done")
 
 """
 

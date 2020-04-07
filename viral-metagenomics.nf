@@ -25,6 +25,11 @@ include remove_human from './modules/modules' params(
   min_hg_align_score: params.min_hg_align_score
 )
 include assemble from './modules/modules'
+include index from './modules/modules'
+include align from './modules/modules'
+include calcStats from './modules/modules'
+include summarize from './modules/modules'
+include collect from './modules/modules' params(output_prefix: params.output_prefix)
 
 // Function which prints help message text
 def helpMessage() {
@@ -121,6 +126,30 @@ workflow {
     }.toSortedList()
   )
 
-  // Count the number of reads which pass human read filtering
+  // Index the assembled contigs for alignment by BWA
+  index(
+    assemble.out
+  )
+
+  // Align all samples against the assembled contigs
+  align(
+    remove_human.out,
+    index.out
+  )
+
+  // Extract the alignment metrics for each sample
+  calcStats(
+    align.out
+  )
+
+  // Summarize each of the samples' alignments
+  summarize(
+    calcStats.out
+  )
+
+  // Collect everything into a single output file
+  collect(
+    summarize.out.toSortedList()
+  )
 
 }
