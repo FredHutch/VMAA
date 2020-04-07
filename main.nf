@@ -18,13 +18,13 @@ include cutadapt from './modules/modules' params(
   max_n_prop: params.max_n_prop,
   qual_threshold: params.qual_threshold
 )
-include collectCountReads from './modules/modules'
+include collectCountReads from './modules/modules' params(output_prefix: params.output_prefix)
 include countReads as countReadsInput from './modules/modules' params(count_reads_label: "raw")
 include countReads as countReadsFiltered from './modules/modules' params(count_reads_label: "filtered")
 include remove_human from './modules/modules' params(
   min_hg_align_score: params.min_hg_align_score
 )
-include assemble from './modules/modules'
+include assemble from './modules/modules' params(output_prefix: params.output_prefix)
 include index from './modules/modules'
 include align from './modules/modules'
 include calcStats from './modules/modules'
@@ -151,5 +151,11 @@ workflow {
   collect(
     summarize.out.toSortedList()
   )
+
+  publish:
+    collect.out to: params.output_folder
+    assemble.out to: params.output_folder
+    collectCountReads.out to: params.output_folder
+
 
 }

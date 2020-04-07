@@ -168,7 +168,7 @@ process assemble {
         path fastq_list
     
     output:
-        file "contigs.fasta.gz"
+        file "${params.output_prefix}.fasta.gz"
     
 """
 set -e 
@@ -192,7 +192,7 @@ date
 echo -e "\\nRenaming output files\\n"
 
 # Rename the output file
-cat OUTPUT/final.contigs.fa | gzip -c > contigs.fasta.gz
+cat OUTPUT/final.contigs.fa | gzip -c > ${params.output_prefix}.fasta.gz
 
 date
 echo -e "\\nDone\\n"
@@ -238,15 +238,15 @@ process collectCountReads {
   file csv_list
   
   output:
-  file "counts.csv"
+  file "${params.output_prefix}.counts.csv"
 
   """
 #!/bin/bash
 
 set -e
 
-echo "specimen,nreads,label" > counts.csv
-cat ${csv_list} >> counts.csv
+echo "specimen,nreads,label" > ${params.output_prefix}.counts.csv
+cat ${csv_list} >> ${params.output_prefix}.counts.csv
   """
 
 }
