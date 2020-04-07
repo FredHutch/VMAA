@@ -1,5 +1,14 @@
 #!/usr/bin/env nextflow
 
+// Preprocessing options
+params.adapter_F = "CTGTCTCTTATACACATCT"
+params.adapter_R = "CTGTCTCTTATACACATCT"
+
+// Container versions
+container__cutadapt = "quay.io/fhcrc-microbiome/cutadapt:cutadapt_2.3_bcw_0.3.1"
+container__bwa = "quay.io/fhcrc-microbiome/bwa:bwa.0.7.17__bcw.0.3.0I"
+container__assembler = "quay.io/biocontainers/megahit:1.2.9--h8b12597_0"
+
 // Combine files which share a specimen label
 workflow join_fastqs_by_specimen {
     take:
@@ -52,24 +61,157 @@ cat ${fastq_list} > TEMP && mv TEMP "${specimen}.fastq.gz"
 
 }
 
+// Process to run catadapt
+process cutadapt {
+    tag "Trim adapters from WGS reads"
+    container "${container__cutadapt}"
+    label 'mem_medium'
+    errorStrategy 'retry'
+    maxRetries 10
+
+    input:
+    tuple sample_name, file(FASTQ)
+
+    output:
+    tuple sample_name, file("${sample_name}.cutadapt.fq.gz")
+
+"""
+set -e 
+
+cutadapt \
+-j ${task.cpus} \
+-a ${params.adapter} \
+-q ${params.qual_threshold},${params.qual_threshold} \
+-m ${params.min_len} \
+--max-n ${params.max_n_prop} \
+--trim-n \
+-o ${sample_name}.cutadapt.fq.gz \
+${FASTQ}
+"""
+}
+
+
+// Process to remove human reads
+process remove_human {
+    tag "Remove human reads"
+    container "${container__bwa}"
+    errorStrategy 'retry'
+    label 'mem_veryhigh'
+
+
+    input:
+        tuple sample_name, file(FASTQ)
+        file hg_index_tgz
+
+    output:
+        tuple sample_name, file("${sample_name}.nohuman.fq.gz")
+
+"""
+#!/bin/bash
+
+set -e
+
+bwa_index_fn=\$(tar -ztvf ${hg_index_tgz} | head -1 | sed \'s/.* //\')
+bwa_index_prefix=\${bwa_index_fn%.*}
+
+echo BWA index prefix is \${bwa_index_prefix}
+
+echo Extracting BWA index
+
+mkdir -p hg_index/ 
+
+tar -I pigz -xf ${hg_index_tgz} -C hg_index/
+
+echo Files in index directory: 
+ls -l -h hg_index 
+
+# Make sure that there are files in the index directory
+(( \$(ls -l -h hg_index | wc -l) > 0 ))
+
+echo Running BWA 
+
+bwa mem -t ${task.cpus} \
+-T ${params.min_hg_align_score} \
+-o alignment.sam \
+hg_index/\$bwa_index_prefix \
+${FASTQ}
+
+echo Checking if alignment is empty  
+[[ -s alignment.sam ]]
+echo Extracting Unaligned Pairs 
+samtools \
+  fastq \
+  alignment.sam \
+  --threads ${task.cpus} \
+  -f 4 \
+  -n \
+  | gzip -c > ${sample_name}.nohuman.fq.gz
+
+echo Checking to see how many reads pass the human filtering
+gunzip -c ${sample_name}.nohuman.fq.gz | wc -l
+(( \$(gunzip -c ${sample_name}.nohuman.fq.gz | wc -l) > 0 ))
+
+echo Done 
+"""
+}
+
+// De novo assembly
+process assemble {
+    tag "De novo metagenomic assembly"
+    container "${container__assembler}"
+    label 'mem_veryhigh'
+    errorStrategy "retry"
+
+    input:
+        path fastq_list
+    
+    output:
+        file "contigs.fasta.gz"
+    
+"""
+set -e 
+
+echo -e "Concatenating inputs"
+cat ${fastq_list} > INPUT.fastq.gz
+
+date
+echo -e "Running Megahit\\n"
+
+megahit \
+    -r INPUT.fastq.gz \
+    -o OUTPUT \
+    -t ${task.cpus}
+
+date
+echo -e "\\nMaking sure output files are not empty\\n"
+[[ \$(cat OUTPUT/final.contigs.fa | wc -l) > 0 ]]
+
+date
+echo -e "\\nRenaming output files\\n"
+
+# Rename the output file
+cat OUTPUT/final.contigs.fa | gzip -c > contigs.fasta.gz
+
+date
+echo -e "\\nDone\\n"
+"""
+}
+
 // Count the number of reads
 process countReads {
   container "ubuntu:16.04"
   errorStrategy 'retry'
   
   input:
-  file fastq
+  tuple val(sample_name), file(fastq)
   
   output:
-  file "${fastq}.counts.csv"
+  file "${sample_name}.${params.count_reads_label}.counts.csv"
 
   """
 #!/bin/bash
 
 set -e
-
-echo "Checking that input file ${fastq} is gzip-compressed"
-gzip -t "${fastq}"
 
 echo "Counting reads"
 n=\$(gunzip -c "${fastq}" | awk 'NR % 4 == 1' | wc -l)
@@ -77,8 +219,30 @@ n=\$(gunzip -c "${fastq}" | awk 'NR % 4 == 1' | wc -l)
 echo "Found \$n reads"
 (( \$n > 0 ))
 
-echo "${fastq},\$n" > "${fastq}.counts.csv"
+echo "${sample_name},\$n,${params.count_reads_label}" > "${sample_name}.${params.count_reads_label}.counts.csv"
 
+  """
+
+}
+
+// Join the countReads CSV
+process collectCountReads {
+  container "ubuntu:16.04"
+  errorStrategy 'retry'
+  
+  input:
+  file csv_list
+  
+  output:
+  file "counts.csv"
+
+  """
+#!/bin/bash
+
+set -e
+
+echo "specimen,nreads,label" > counts.csv
+cat ${csv_list} >> counts.csv
   """
 
 }
