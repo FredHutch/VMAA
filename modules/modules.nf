@@ -125,8 +125,8 @@ bwa_index_prefix=\${bwa_index_prefix%.pac}
 bwa_index_prefix=\${bwa_index_prefix%.sa}
 
 echo BWA index prefix is \${bwa_index_prefix}
-echo If this index prefix is not correct, consider remaking the tarball
-echo so that it doesn't include anything other than the index files
+echo "If this index prefix is not correct, consider remaking the tarball"
+echo "so that it doesn't include anything other than the index files"
 
 echo Extracting BWA index
 
