@@ -113,10 +113,20 @@ process remove_human {
 
 set -e
 
-bwa_index_fn=\$(tar -ztvf ${hg_index_tgz} | head -1 | sed \'s/.* //\')
-bwa_index_prefix=\${bwa_index_fn%.*}
+# Get the index name from the first file in the tar
+bwa_index_prefix=\$(tar -ztvf ${hg_index_tgz} | head -1 | sed \'s/.* //\')
+
+# Remove whichever ending this file has
+bwa_index_prefix=\${bwa_index_prefix%.amb}
+bwa_index_prefix=\${bwa_index_prefix%.ann}
+bwa_index_prefix=\${bwa_index_prefix%.bwt}
+bwa_index_prefix=\${bwa_index_prefix%.fai}
+bwa_index_prefix=\${bwa_index_prefix%.pac}
+bwa_index_prefix=\${bwa_index_prefix%.sa}
 
 echo BWA index prefix is \${bwa_index_prefix}
+echo If this index prefix is not correct, consider remaking the tarball
+echo so that it doesn't include anything other than the index files
 
 echo Extracting BWA index
 
