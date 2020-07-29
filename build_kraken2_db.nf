@@ -5,7 +5,7 @@ params.output_folder = false
 params.output_prefix = false
 
 // Container with kraken2 installed
-container__kraken2 = "quay.io/fhcrc-microbiome/kraken2:v2.0.9-beta"
+container__kraken2 = "quay.io/fhcrc-microbiome/kraken2:latest"
 
 // Function which prints help message text
 def helpMessage() {
