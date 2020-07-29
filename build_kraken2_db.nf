@@ -38,10 +38,15 @@ process build_kraken2_db {
 
 set -e
 
-kraken2-build \
-    --standard \
-    --threads ${task.cpus} \
-    --db ${params.output_prefix}
+# Retry a few times to deal with spotty network connections
+for _ in 1 2 3 4 5; do 
+    kraken2-build \
+        --standard \
+        --threads ${task.cpus} \
+        --db ${params.output_prefix} && \
+        break
+    sleep 60
+done
 
   """
 
