@@ -15,28 +15,25 @@ params.kraken2_folder = false
 params.kraken2_prefix = false
 
 // Import modules used in the workflow
-include { join_fastqs_by_specimen } from './modules/modules'
-include { cutadapt } from './modules/modules' params(
-  adapter: params.adapter,
-  min_len: params.min_len,
-  max_n_prop: params.max_n_prop,
-  qual_threshold: params.qual_threshold
-)
-include { collectCountReads } from './modules/modules' params(output_prefix: params.output_prefix)
-include { countReads } as countReadsInput from './modules/modules' params(count_reads_label: "raw")
-include { countReads } as countReadsFiltered from './modules/modules' params(count_reads_label: "filtered")
-include { remove_human } from './modules/modules' params(
-  min_hg_align_score: params.min_hg_align_score
-)
-include { assemble } from './modules/modules' params(output_prefix: params.output_prefix)
-include { index } from './modules/modules'
-include { align } from './modules/modules'
-include { calcStats } from './modules/modules'
-include { summarize } from './modules/modules'
-include { collect } from './modules/modules' params(output_prefix: params.output_prefix)
-include { kraken2 } from './modules/modules' params(
-  output_prefix: params.output_prefix
-)
+include { 
+  join_fastqs_by_specimen;
+  cutadapt;
+  collectCountReads; 
+  remove_human;
+  assemble;
+  index;
+  align;
+  calcStats;
+  summarize;
+  collect;
+  kraken2;
+} from './modules/modules'
+include { 
+  countReads as countReadsInput
+} from './modules/modules' addParams(count_reads_label: "raw")
+include { 
+  countReads as countReadsFiltered
+} from './modules/modules' addParams(count_reads_label: "filtered")
 
 // Function which prints help message text
 def helpMessage() {
