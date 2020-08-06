@@ -28,7 +28,7 @@ def helpMessage() {
 
 if(args.protein){
   // Build the Kraken2 database
-  process build_kraken2_db {
+  process build_kraken2_db_protein {
     container "${container__kraken2}"
     errorStrategy 'retry'
     publishDir "${params.output_folder}"
@@ -52,7 +52,8 @@ kraken2-build \
 
   """
 
-  }else{
+  }
+} else {
         
     // Build the Kraken2 database
     process build_kraken2_db {
