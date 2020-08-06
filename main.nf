@@ -172,10 +172,4 @@ workflow {
     summarize.out.toSortedList()
   )
 
-  publish:
-    collect.out to: params.output_folder
-    assemble.out to: params.output_folder
-    collectCountReads.out to: params.output_folder
-
-
 }

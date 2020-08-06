@@ -174,6 +174,7 @@ process assemble {
     container "${container__assembler}"
     label 'mem_veryhigh'
     errorStrategy "retry"
+    publishDir params.output_folder
 
     input:
         path fastq_list
@@ -244,6 +245,7 @@ process collectCountReads {
   container "${container__ubuntu}"
   label 'io_limited'
   errorStrategy 'retry'
+  publishDir collectCountReads
   
   input:
   file csv_list
@@ -542,6 +544,7 @@ process collect {
   container "${container__pandas}"
   label "io_limited"
   errorStrategy 'retry'
+  publishDir params.output_folder
 
   input:
   file summary_csv_list
