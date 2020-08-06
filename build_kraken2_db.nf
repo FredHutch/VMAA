@@ -34,9 +34,9 @@ if (params.help){
     exit 1
 }
 
-if(args.protein){
+if(args.protein == false){
   // Build the Kraken2 database
-  process build_kraken2_db_protein {
+  process build_kraken2_db {
     container "${container__kraken2}"
     errorStrategy 'retry'
     publishDir "${params.output_folder}"
@@ -55,16 +55,14 @@ kraken2-build \
     --standard \
     --threads ${task.cpus} \
     --db ${params.output_prefix} \
-    --protein \
     --use-ftp
 
   """
 
   }
 } else {
-        
-    // Build the Kraken2 database
-    process build_kraken2_db {
+    // Build the Kraken2 protein database
+    process build_kraken2_db_protein {
       container "${container__kraken2}"
       errorStrategy 'retry'
       publishDir "${params.output_folder}"
@@ -83,6 +81,7 @@ kraken2-build \
     --standard \
     --threads ${task.cpus} \
     --db ${params.output_prefix} \
+    --protein \
     --use-ftp
 
   """
