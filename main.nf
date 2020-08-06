@@ -23,7 +23,7 @@ include { cutadapt } from './modules/modules' params(
   qual_threshold: params.qual_threshold
 )
 include { collectCountReads } from './modules/modules' params(output_prefix: params.output_prefix)
-include { countReads } as count ReadsInput from './modules/modules' params(count_reads_label: "raw")
+include { countReads } as countReadsInput from './modules/modules' params(count_reads_label: "raw")
 include { countReads } as countReadsFiltered from './modules/modules' params(count_reads_label: "filtered")
 include { remove_human } from './modules/modules' params(
   min_hg_align_score: params.min_hg_align_score
