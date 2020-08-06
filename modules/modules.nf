@@ -245,7 +245,7 @@ process collectCountReads {
   container "${container__ubuntu}"
   label 'io_limited'
   errorStrategy 'retry'
-  publishDir collectCountReads
+  publishDir params.output_folder
   
   input:
   file csv_list
