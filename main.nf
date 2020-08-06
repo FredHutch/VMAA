@@ -10,6 +10,10 @@ params.min_len = 20
 params.max_n_prop = 0.1
 params.min_hg_align_score = 20
 
+// Optional Kraken2 database
+params.kraken2_folder = false
+params.kraken2_prefix = false
+
 // Import modules used in the workflow
 include join_fastqs_by_specimen from './modules/modules'
 include cutadapt from './modules/modules' params(
@@ -30,6 +34,9 @@ include align from './modules/modules'
 include calcStats from './modules/modules'
 include summarize from './modules/modules'
 include collect from './modules/modules' params(output_prefix: params.output_prefix)
+include kraken2 from './modules/modules' params(
+  output_prefix: params.output_prefix
+)
 
 // Function which prints help message text
 def helpMessage() {
@@ -43,6 +50,10 @@ def helpMessage() {
       --output_folder       Folder to place analysis outputs
       --output_prefix       Text used as a prefix for output files
       --human_genome_tar    Indexed human genome, gzipped tarball
+
+    Optional:
+      --kraken2_folder      Folder containing Kraken2 database (omit trailing /)
+      --kraken2_prefix      Prefix used to build Kraken2 database
 
     Manifest:
       The manifest is a CSV with a header indicating which samples correspond to which files.
@@ -125,6 +136,15 @@ workflow {
       r -> r[1]
     }.toSortedList()
   )
+
+  // If a Kraken2 database has been provided, perform
+  // taxonomic classification on the contigs 
+  if (params.kraken2_folder and params.kraken2_prefix){
+    kraken2(
+      assemble.out,
+      path("${params.kraken2_folder}/${params.kraken2_prefix}/")
+    )
+  }
 
   // Index the assembled contigs for alignment by BWA
   index(

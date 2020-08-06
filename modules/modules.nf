@@ -10,6 +10,7 @@ container__bwa = "quay.io/fhcrc-microbiome/bwa:bwa.0.7.17__bcw.0.3.0I"
 container__assembler = "quay.io/biocontainers/megahit:1.2.9--h8b12597_0"
 container__ubuntu = "ubuntu:20.04"
 container__pandas = "quay.io/fhcrc-microbiome/python-pandas:v0.24.2"
+container__kraken2 = "quay.io/fhcrc-microbiome/kraken2:v2.0.9-beta"
 
 // Combine files which share a specimen label
 workflow join_fastqs_by_specimen {
@@ -580,5 +581,34 @@ summary_df.to_csv("${params.output_prefix}.summary.csv.gz", index=None)
 logging.info("Done")
 
 """
+
+}
+
+
+// Perform taxonomic classification with Kraken2
+process kraken2 {
+  container "${container__kraken2}"
+  errorStrategy 'retry'
+  label "mem_veryhigh"
+
+  input:
+  file input_fasta
+  file kraken_db
+  
+  output:
+  file "${params.output_prefix}.kraken2.gz"
+
+  """
+#!/bin/bash
+
+set -e
+
+kraken2 \
+    --db ${kraken_db} \
+    --threads ${task.cpus} \
+    ${input_fasta} \
+    | gzip -c > ${params.output_prefix}.kraken2.gz
+
+  """
 
 }
