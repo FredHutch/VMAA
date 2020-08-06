@@ -73,10 +73,10 @@ process cutadapt {
     maxRetries 10
 
     input:
-    tuple sample_name, file(FASTQ)
+    tuple val(sample_name), file(FASTQ)
 
     output:
-    tuple sample_name, file("${sample_name}.cutadapt.fq.gz")
+    tuple val(sample_name), file("${sample_name}.cutadapt.fq.gz")
 
 """
 set -e 
@@ -103,11 +103,11 @@ process remove_human {
 
 
     input:
-        tuple sample_name, file("${sample_name}.input.fq.gz")
+        tuple val(sample_name), file("${sample_name}.input.fq.gz")
         file hg_index_tgz
 
     output:
-        tuple sample_name, file("${sample_name}.fq.gz")
+        tuple val(sample_name), file("${sample_name}.fq.gz")
 
 """
 #!/bin/bash
