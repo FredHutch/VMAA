@@ -139,10 +139,10 @@ workflow {
 
   // If a Kraken2 database has been provided, perform
   // taxonomic classification on the contigs 
-  if (params.kraken2_folder && params.kraken2_prefix){
+  if (params.kraken2_folder != false && params.kraken2_prefix != false){
     kraken2(
       assemble.out,
-      path("${params.kraken2_folder}/${params.kraken2_prefix}/")
+      Channel.fromPath("${params.kraken2_folder}/${params.kraken2_prefix}/*").collect()
     )
   }
 
