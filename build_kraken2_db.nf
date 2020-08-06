@@ -4,6 +4,7 @@
 params.output_folder = false
 params.output_prefix = false
 params.protein = false
+params.help = false
 
 // Container with kraken2 installed
 container__kraken2 = "quay.io/fhcrc-microbiome/kraken2:latest"
@@ -25,6 +26,13 @@ def helpMessage() {
     """.stripIndent()
 }
 
+// Show help message if the user specifies the --help flag at runtime
+if (params.help){
+    // Invoke the function above which prints the help message
+    helpMessage()
+    // Exit out and do not run anything else
+    exit 1
+}
 
 if(args.protein){
   // Build the Kraken2 database
