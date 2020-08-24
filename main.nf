@@ -26,6 +26,7 @@ include {
   calcStats;
   summarize;
   collect;
+  collect_with_kraken;
   kraken2;
 } from './modules/modules'
 include { 
@@ -165,8 +166,15 @@ workflow {
   )
 
   // Collect everything into a single output file
-  collect(
-    summarize.out.toSortedList()
-  )
+  if (params.kraken2_folder != false && params.kraken2_prefix != false){
+    collect_with_kraken(
+      summarize.out.toSortedList(),
+      kraken2.out
+    )
+  } else {
+    collect(
+      summarize.out.toSortedList()
+    )
+  }
 
 }

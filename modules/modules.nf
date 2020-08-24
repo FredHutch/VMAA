@@ -588,6 +588,85 @@ logging.info("Done")
 }
 
 
+process collect_with_kraken {
+  container "${container__pandas}"
+  label "io_limited"
+  errorStrategy 'retry'
+  publishDir params.output_folder
+
+  input:
+  file summary_csv_list
+  file kraken2_tsv
+
+  output:
+  file "${params.output_prefix}.summary.csv.gz"
+
+  """
+#!/usr/bin/env python3
+import logging
+import os
+import gzip
+import json
+import pandas as pd
+
+logFormatter = logging.Formatter(
+    '%(asctime)s %(levelname)-8s [nf-viral-metagenomics] %(message)s'
+)
+rootLogger = logging.getLogger()
+rootLogger.setLevel(logging.INFO)
+
+# Write to STDOUT
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+rootLogger.addHandler(consoleHandler)
+
+summary_csv_list = "${summary_csv_list}".split(" ")
+logging.info("Reading in a list of %d summary CSV files" % len(summary_csv_list))
+summary_df = pd.concat([
+  pd.read_csv(fp)
+  for fp in summary_csv_list
+])
+
+# Read in the Kraken2 results
+kraken_df = pd.read_csv(
+  "${kraken2_tsv}", 
+  sep="\\t", 
+  header=None,
+  names = [
+    "success",
+    "query",
+    "tax_id",
+    "query_len",
+    "hit_string"
+  ]
+).query(
+  "success == 'C'"
+).drop(
+  columns=["success", "query_len"]
+).set_index(
+  "query"
+)
+
+# Add the Kraken results to the summary DataFrame
+for k in kraken_df.columns.values:
+  summary_df = summary_df.assign(
+    X = summary_df["contig"].apply(
+      kraken_df[k].get
+    )
+  ).rename(
+    columns=dict(X=k)
+  )
+
+logging.info("Saving to ${params.output_prefix}.summary.csv.gz")
+summary_df.to_csv("${params.output_prefix}.summary.csv.gz", index=None)
+
+logging.info("Done")
+
+"""
+
+}
+
+
 // Perform taxonomic classification with Kraken2
 process kraken2 {
   container "${container__kraken2}"
