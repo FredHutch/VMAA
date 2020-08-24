@@ -596,7 +596,7 @@ process kraken2 {
 
   input:
   file input_fasta
-  file kraken_db
+  file "DB/*"
   
   output:
   file "${params.output_prefix}.kraken2.gz"
@@ -606,8 +606,14 @@ process kraken2 {
 
 set -e
 
-kraken2 \
-    --db ${kraken_db} \
+ls -lahtr
+
+ls -lahtr DB/
+
+echo "Running kraken2"
+
+KRAKEN2_DB_PATH=DB kraken2 \
+    --db DB \
     --threads ${task.cpus} \
     ${input_fasta} \
     | gzip -c > ${params.output_prefix}.kraken2.gz
