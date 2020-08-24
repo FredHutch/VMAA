@@ -612,7 +612,7 @@ ls -lahtr DB/
 
 echo "Running kraken2"
 
-KRAKEN2_DB_PATH=DB kraken2 \
+KRAKEN2_DB_PATH=\$PWD kraken2 \
     --db DB \
     --threads ${task.cpus} \
     ${input_fasta} \
