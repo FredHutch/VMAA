@@ -648,14 +648,20 @@ kraken_df = pd.read_csv(
 )
 
 # Add the Kraken results to the summary DataFrame
-for k in kraken_df.columns.values:
-  summary_df = summary_df.assign(
-    X = summary_df["contig"].apply(
-      kraken_df[k].get
-    )
-  ).rename(
-    columns=dict(X=k)
+summary_df = summary_df.assign(
+  tax_id = summary_df["contig"].apply(
+    kraken_df["tax_id"].get
+  ).fillna(
+    0
+  ).apply(
+    int
   )
+)
+summary_df = summary_df.assign(
+  hit_string = summary_df["contig"].apply(
+    kraken_df["hit_string"].get
+  )
+)
 
 logging.info("Saving to ${params.output_prefix}.summary.csv.gz")
 summary_df.to_csv("${params.output_prefix}.summary.csv.gz", index=None)
