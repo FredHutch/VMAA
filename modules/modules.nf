@@ -72,7 +72,7 @@ process cutadapt {
     tuple val(sample_name), file(FASTQ)
 
     output:
-    tuple val(sample_name), file("${sample_name}.cutadapt.fq.gz")
+    tuple val(sample_name), file("${sample_name}.cutadapt.fq.gz") optional true
 
 """
 set -e 
@@ -92,7 +92,12 @@ awk '{if(NR % 4 != 0){printf \$1 "\t"}else{print \$1}}' | \
 grep -v ${params.adapter_F} | \
 grep -v ${params.adapter_R} | \
 tr '\t' '\n' | gzip -c > \
-${sample_name}.cutadapt.fq.gz \
+${sample_name}.cutadapt.fq.gz
+
+# If the file is empty, delete it entirely
+if (( \$(gunzip -c ${sample_name}.cutadapt.fq.gz | wc -l) == 0 )); then
+  rm ${sample_name}.cutadapt.fq.gz
+fi
 """
 }
 
