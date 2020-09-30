@@ -87,9 +87,12 @@ cutadapt \
 --max-n ${params.max_n_prop} \
 --times 3 \
 --trim-n \
--o ${sample_name}.cutadapt.fq.gz \
-${FASTQ}
-
+${FASTQ} | \
+awk '{if(NR % 4 != 0){printf \$1 "\t"}else{print \$1}}' | \
+grep -v ${params.adapter_F} | \
+grep -v ${params.adapter_R} | \
+tr '\t' '\n' | gzip -c > \
+${sample_name}.cutadapt.fq.gz \
 """
 }
 
