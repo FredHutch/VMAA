@@ -4,7 +4,9 @@
 nextflow.enable.dsl=2
 
 // Preprocessing options
-params.adapter = "CTGTCTCTTATACACATCT"
+params.adapter_F = "AGGGAGGACGATGCGG"
+params.adapter_R = "GTGTCAGTCAC"
+params.bases_before_adapter = 0
 params.qual_threshold = 20
 params.min_len = 20
 params.max_n_prop = 0.1
@@ -17,7 +19,6 @@ params.kraken2_prefix = false
 // Import modules used in the workflow
 include { 
   join_fastqs_by_specimen;
-  cutadapt;
   collectCountReads; 
   remove_human;
   assemble;
@@ -35,6 +36,17 @@ include {
 include { 
   countReads as countReadsFiltered
 } from './modules/modules' addParams(count_reads_label: "filtered")
+include {
+  cutadapt;
+} from './modules/modules' addParams(
+  adapter_F: params.adapter_F,
+  adapter_R: params.adapter_R,
+  min_len: params.min_len,
+  qual_threshold: params.qual_threshold,
+  min_len: params.min_len,
+  max_n_prop: params.max_n_prop,
+  bases_before_adapter: params.bases_before_adapter
+)
 
 // Function which prints help message text
 def helpMessage() {

@@ -1,9 +1,5 @@
 #!/usr/bin/env nextflow
 
-// Preprocessing options
-params.adapter_F = "CTGTCTCTTATACACATCT"
-params.adapter_R = "CTGTCTCTTATACACATCT"
-
 // Container versions
 container__cutadapt = "quay.io/fhcrc-microbiome/cutadapt:cutadapt_2.3_bcw_0.3.1"
 container__bwa = "quay.io/fhcrc-microbiome/bwa:bwa.0.7.17__bcw.0.3.0I"
@@ -82,17 +78,20 @@ process cutadapt {
 set -e 
 
 cutadapt \
+--minimum-length ${params.min_len} \
 -j ${task.cpus} \
--a ${params.adapter} \
+--cut ${params.bases_before_adapter} \
+-g ^${params.adapter_F}...${params.adapter_R} \
 -q ${params.qual_threshold},${params.qual_threshold} \
--m ${params.min_len} \
+--discard-untrimmed \
 --max-n ${params.max_n_prop} \
+--times 3 \
 --trim-n \
 -o ${sample_name}.cutadapt.fq.gz \
 ${FASTQ}
+
 """
 }
-
 
 // Process to remove human reads
 process remove_human {
