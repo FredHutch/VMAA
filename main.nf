@@ -41,7 +41,6 @@ include {
 } from './modules/modules' addParams(
   adapter_F: params.adapter_F,
   adapter_R: params.adapter_R,
-  min_len: params.min_len,
   qual_threshold: params.qual_threshold,
   min_len: params.min_len,
   max_n_prop: params.max_n_prop,
