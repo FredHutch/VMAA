@@ -114,7 +114,7 @@ process remove_human {
         file hg_index_tgz
 
     output:
-        tuple val(sample_name), file("${sample_name}.fq.gz")
+        tuple val(sample_name), file("${sample_name}.fq.gz") optional true
 
 """
 #!/bin/bash
@@ -157,19 +157,34 @@ hg_index/\$bwa_index_prefix \
 ${sample_name}.input.fq.gz
 
 echo Checking if alignment is empty  
-[[ -s alignment.sam ]]
-echo Extracting Unaligned Pairs 
-samtools \
-  fastq \
-  alignment.sam \
-  --threads ${task.cpus} \
-  -f 4 \
-  -n \
-  | gzip -c > ${sample_name}.fq.gz
+if [[ -s alignment.sam ]]; then
 
-echo Checking to see how many reads pass the human filtering
-gunzip -c ${sample_name}.fq.gz | wc -l
-(( \$(gunzip -c ${sample_name}.fq.gz | wc -l) > 0 ))
+  echo Extracting Unaligned Pairs 
+  samtools \
+    fastq \
+    alignment.sam \
+    --threads ${task.cpus} \
+    -f 4 \
+    -n \
+    | gzip -c > ${sample_name}.fq.gz
+
+  
+  echo "Checking to see how many reads pass the human filtering"
+
+  gunzip -c ${sample_name}.fq.gz | wc -l
+
+  if (( \$(gunzip -c ${sample_name}.fq.gz | wc -l) == 0 )); then
+
+    echo "Removing empty output file"
+    rm ${sample_name}.fq.gz
+
+  fi
+
+else
+
+  echo "Alignment SAM file was empty"
+
+fi
 
 echo Done 
 """
