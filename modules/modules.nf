@@ -319,6 +319,7 @@ process align {
   container "${container__bwa}"
   label "mem_veryhigh"
   errorStrategy 'retry'
+  publishDir "${params.output_folder}/bam/", mode: 'copy'
 
   input:
   tuple val(sample_name), file(input_fastq)
