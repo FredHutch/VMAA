@@ -216,7 +216,11 @@ echo -e "Running Megahit\\n"
 megahit \
     -r INPUT.fastq.gz \
     -o OUTPUT \
-    -t ${task.cpus}
+    -t ${task.cpus} \
+    --k-min ${params.k_min} \
+    --k-max ${params.k_max} \
+    --k-step ${params.k_step} \
+    --min-contig-len ${params.min_len} \
 
 date
 echo -e "\\nMaking sure output files are not empty\\n"

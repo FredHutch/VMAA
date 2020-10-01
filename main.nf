@@ -11,6 +11,9 @@ params.qual_threshold = 20
 params.min_len = 20
 params.max_n_prop = 0.1
 params.min_hg_align_score = 20
+params.k_min = 13
+params.k_max = 25
+params.k_step = 2
 
 // Optional Kraken2 database
 params.kraken2_folder = false
@@ -21,7 +24,6 @@ include {
   join_fastqs_by_specimen;
   collectCountReads; 
   remove_human;
-  assemble;
   index;
   align;
   calcStats;
@@ -46,6 +48,14 @@ include {
   max_n_prop: params.max_n_prop,
   bases_before_adapter: params.bases_before_adapter
 )
+include {
+  assemble;
+} from './modules/modules' addParams(
+  k_min: params.k_min,
+  k_max: params.k_max,
+  k_step: params.k_step,
+  min_len: params.min_len,  
+)
 
 // Function which prints help message text
 def helpMessage() {
@@ -63,6 +73,9 @@ def helpMessage() {
     Optional:
       --kraken2_folder      Folder containing Kraken2 database (omit trailing /)
       --kraken2_prefix      Prefix used to build Kraken2 database
+      --k_min               Minimum k-mer size used for de novo assembly (default: 13)
+      --k_max               Maximum k-mer size used for de novo assembly (default: 25)
+      --k_step              Interval k-mer step size used for de novo assembly (default: 2)
 
     Manifest:
       The manifest is a CSV with a header indicating which samples correspond to which files.
