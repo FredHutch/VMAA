@@ -11,7 +11,7 @@ params.qual_threshold = 20
 params.min_len = 20
 params.max_n_prop = 0.1
 params.min_hg_align_score = 20
-params.k_min = 13
+params.k_min = 15
 params.k_max = 25
 params.k_step = 2
 
