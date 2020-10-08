@@ -25,6 +25,7 @@ include {
   collectCountReads; 
   remove_human;
   index;
+  faidx;
   align;
   calcStats;
   summarize;
@@ -170,6 +171,11 @@ workflow {
 
   // Index the assembled contigs for alignment by BWA
   index(
+    assemble.out
+  )
+
+  // Index the assembled contigs for visualization by SAMtools
+  faidx(
     assemble.out
   )
 

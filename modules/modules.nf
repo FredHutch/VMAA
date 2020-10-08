@@ -343,7 +343,7 @@ bwa mem \
   | samtools view -b -F 4 -o ${sample_name}.bam
 
 # Sort the BAM file
-samtools sort -o ${sample_name}.SORTED ${sample_name}.bam
+samtools sort -o ${sample_name}.SORTED.bam ${sample_name}.bam
 mv ${sample_name}.SORTED.bam ${sample_name}.bam
 
 # Index the BAM file
@@ -351,6 +351,28 @@ samtools index ${sample_name}.bam
 
 echo Done aligning ${sample_name}.bam
 
+    """
+
+}
+
+process faidx {
+  container "${container__bwa}"
+  label "mem_medium"
+  errorStrategy 'retry'
+  publishDir params.output_folder, mode: 'copy'
+
+  input:
+  file fasta
+  
+  output:
+  file "${fasta}.fai"
+
+  """
+#!/bin/bash
+set -e
+
+echo "Running samtools faidx ${fasta}"
+samtools faidx ${fasta}
     """
 
 }
