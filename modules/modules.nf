@@ -326,7 +326,7 @@ process align {
   file genome_index
   
   output:
-  tuple val(sample_name), file("${sample_name}.bam")
+  tuple val(sample_name), file("${sample_name}.bam"), file("${sample_name}.bam.bai")
 
   """
 #!/bin/bash
@@ -386,7 +386,7 @@ process calcStats {
   errorStrategy 'retry'
 
   input:
-  tuple val(sample_name), file(bam)
+  tuple val(sample_name), file(bam), file(bai)
   
   output:
   tuple val(sample_name), file("${sample_name}.idxstats"), file("${sample_name}.stats"), file("${sample_name}.pileup"), file("${sample_name}.positions")
