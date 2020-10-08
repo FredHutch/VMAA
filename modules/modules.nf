@@ -374,7 +374,7 @@ set -e
 echo "Decompressing input"
 gunzip ${fasta}
 
-echo "Running samtools faidx ${fasta.replaceAll(/.gz/, '')}"
+echo "Running samtools faidx ${fasta.name.replaceAll(/.gz/, '')}"
 samtools faidx ${fasta.replaceAll(/.gz/, '')}
     """
 
