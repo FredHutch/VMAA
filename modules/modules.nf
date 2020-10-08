@@ -371,8 +371,11 @@ process faidx {
 #!/bin/bash
 set -e
 
-echo "Running samtools faidx ${fasta}"
-samtools faidx ${fasta}
+echo "Decompressing input"
+gunzip ${fasta}
+
+echo "Running samtools faidx ${fasta.replaceAll(/.gz/, '')}"
+samtools faidx ${fasta.replaceAll(/.gz/, '')}
     """
 
 }
