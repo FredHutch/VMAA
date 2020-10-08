@@ -365,7 +365,7 @@ process faidx {
   file fasta
   
   output:
-  file "${fasta}.fai"
+  file "${fasta.name.replaceAll(/.gz/, '')}.fai"
 
   """
 #!/bin/bash
