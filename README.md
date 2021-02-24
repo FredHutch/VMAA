@@ -36,6 +36,13 @@ Required Arguments:
   --output_prefix       Text used as a prefix for output files
   --human_genome_tar    Indexed human genome, gzipped tarball
 
+Optional:
+  --kraken2_folder      Folder containing Kraken2 database (omit trailing /)
+  --kraken2_prefix      Prefix used to build Kraken2 database
+  --k_min               Minimum k-mer size used for de novo assembly (default: 13)
+  --k_max               Maximum k-mer size used for de novo assembly (default: 25)
+  --k_step              Interval k-mer step size used for de novo assembly (default: 2)
+
 Manifest:
   The manifest is a CSV with a header indicating which samples correspond to which files.
   The file must contain the columns `specimen` and `fastq`. FASTQ files should be gzip-compressed.

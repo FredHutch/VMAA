@@ -14,7 +14,7 @@ def helpMessage() {
     log.info"""
     Usage:
 
-    nextflow run FredHutch/build_kraken2_db <ARGUMENTS>
+    nextflow run FredHutch/VMAA/build_kraken2_db.nf <ARGUMENTS>
     
     Required Arguments:
       --output_folder       Folder to place database
